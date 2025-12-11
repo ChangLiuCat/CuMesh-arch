@@ -907,7 +907,10 @@ void CuMesh::compute_charts(
     float smooth_strength
 ) {
     if (this->manifold_face_adj.is_empty()) {
-        throw std::runtime_error("manifold_face_adj must be computed before running compute_chart.");
+        this->get_manifold_face_adjacency();
+    }
+    if (this->face_normals.is_empty()) {
+        this->compute_face_normals();
     }
 
     // Initialize chart id

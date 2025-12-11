@@ -73,7 +73,7 @@ static __global__ void compute_vertex_normals_kernel(
 
 void CuMesh::compute_vertex_normals() {
     if (this->vert2face.is_empty() || this->vert2face_offset.is_empty()) {
-        throw std::runtime_error("vert2face and vert2face_offset must be computed before calling compute_vertex_normals.");
+        this->get_vertex_face_adjacency();
     }
 
     size_t V = this->vertices.size;

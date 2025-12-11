@@ -1,6 +1,8 @@
 from typing import *
+import math
 import torch
 from tqdm import tqdm
+from .xatlas import Atlas
 from . import _C
 
 
@@ -330,13 +332,20 @@ class CuMesh:
         if verbose:
             pbar.close()
             
-    def compute_charts(self, threshold_cone_half_angle_rad: float, refine_iterations: int=100, global_iterations: int=1, smooth_strength: float=2):
+    def compute_charts(
+        self,
+        threshold_cone_half_angle_rad: float=math.radians(90),
+        refine_iterations: int=100,
+        global_iterations: int=3,
+        smooth_strength: float=1
+    ):
         """
         Compute the atlas charts.
 
         Args:
             threshold_cone_half_angle_rad: The threshold for the cone half angle in radians.
             refine_iterations: The number of refinement iterations.
+            smooth_strength: The strength of chart boundary smoothing.
         """
         self.cu_mesh.compute_charts(threshold_cone_half_angle_rad, refine_iterations, global_iterations, smooth_strength)
         
@@ -353,4 +362,68 @@ class CuMesh:
                 - a tensor of shape [C+1] containing the offsets of the chart faces in the faces tensor.
         """
         return self.cu_mesh.read_atlas_charts()
+    
+    def uv_unwrap(
+        self,
+        compute_charts_kwargs: dict={},
+        xatlas_compute_charts_kwargs: dict={},
+        xatlas_pack_charts_kwargs: dict={},
+        verbose: bool=False
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Parameterize the mesh using the accelerated mesh clustering and Xatlas
+        
+        Args:
+            compute_charts_kwargs: a dictionary of options for the compute_charts function.
+            xatlas_compute_charts_kwargs: a dictionary of options for the xatlas compute_charts function.
+            xatlas_pack_charts_kwargs: a dictionary of options for the xatlas pack_charts function.
+            
+        Returns:
+            A tuple of three tensors:
+                - the vertex positions
+                - the face indices
+                - the uv coordinates
+        """
+        xatlas_compute_charts_kwargs['verbose'] = verbose
+        xatlas_pack_charts_kwargs['verbose'] = verbose
+        
+        self.remove_degenerate_faces()
+        
+        # 1. Fast mesh clustering
+        self.compute_charts(**compute_charts_kwargs)
+        new_vertices, new_faces = self.read()
+        num_charts, charts_id, chart_vmap, chart_faces, chart_face_offset = self.read_atlas_charts()
+        chart_vertices = new_vertices[chart_vmap].cpu()
+        chart_faces = chart_faces.cpu()
+        if verbose:
+            print(f"Get {num_charts} clusters after fast clustering")
+        
+        # 2. Xatlas packing
+        xatlas = Atlas()
+        charts = []
+        for i in tqdm(range(num_charts), desc="Adding clusters to xatlas", disable=not verbose):
+            chart_faces_i = chart_faces[chart_face_offset[i]:chart_face_offset[i+1]]
+            chart_faces_i_min = chart_faces_i.min()
+            chart_faces_i_max = chart_faces_i.max()
+            chart_vertices_i = chart_vertices[chart_faces_i_min:chart_faces_i_max+1]
+            chart_faces_i -= chart_faces_i_min
+            charts.append((chart_vertices_i, chart_faces_i))
+            xatlas.add_mesh(chart_vertices_i, chart_faces_i)
+        xatlas.compute_charts(verbose=True)
+        xatlas.pack_charts(verbose=True)
+        vertices = []
+        faces = []
+        uvs = []
+        cnt = 0
+        for i in range(num_charts):
+            vmap, x_faces, x_uvs = xatlas.get_mesh(i)
+            vertices.append(charts[i][0][vmap])
+            faces.append(x_faces + cnt)
+            uvs.append(x_uvs)
+            cnt += vmap.shape[0]
+        vertices = torch.cat(vertices, dim=0)
+        faces = torch.cat(faces, dim=0)
+        uvs = torch.cat(uvs, dim=0)
+        
+        return vertices, faces, uvs
             

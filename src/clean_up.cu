@@ -364,7 +364,7 @@ struct LessThanOp {
 
 void CuMesh::fill_holes(float max_hole_perimeter) {
     if (this->loop_boundaries.is_empty() || this->loop_boundaries_offset.is_empty()) {
-        throw std::runtime_error("loop_boundaries and loop_boundaries_offset must be computed before calling fill_holes.");
+        this->get_boundary_loops();
     }
 
     size_t V = this->vertices.size;
@@ -681,7 +681,7 @@ static __global__ void index_vertice_kernel(
 
 void CuMesh::repair_non_manifold_edges(){
     if (this->manifold_face_adj.is_empty()) {
-        throw std::runtime_error("manifold_face_adj must be computed before running repair_non_manifold_edges.");
+        this->get_manifold_face_adjacency();
     }
 
     size_t V = this->vertices.size;
@@ -783,7 +783,7 @@ struct GreaterThanOrEqualToOp {
 
 void CuMesh::remove_small_connected_components(float min_area) {
     if (this->conn_comp_ids.is_empty()) {
-        throw std::runtime_error("Connected components must be computed before calling remove_small_connected_components.");
+        this->get_connected_components();
     }
     size_t F = this->faces.size;
     if (F == 0) return;
@@ -1035,7 +1035,7 @@ static __global__ void inplace_flip_faces_with_flags_kernel(
 
 void CuMesh::unify_face_orientations() {
     if (this->manifold_face_adj.is_empty()) {
-        throw std::runtime_error("manifold_face_adj must be computed before running unify_face_orientations.");
+        this->get_manifold_face_adjacency();
     }
 
     // 1. Compute the flipped flag for each edge.

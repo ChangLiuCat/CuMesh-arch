@@ -216,8 +216,11 @@ static __global__ void get_edge_face_adjacency_kernel(
 
 
 void CuMesh::get_edge_face_adjacency() {
-    if (this->edges.is_empty() || this->edge2face_cnt.is_empty() || this->vert2face.is_empty() || this->vert2face_offset.is_empty()) {
-        throw std::runtime_error("Edges, edge2face_cnt, vert2face and vert2face_offset must be computed before calling get_edge_face_adjacency.");
+    if (this->edges.is_empty() || this->edge2face_cnt.is_empty()) {
+        this->get_edges();
+    }
+    if (this->vert2face.is_empty() || this->vert2face_offset.is_empty()) {
+        this->get_vertex_face_adjacency();    
     }
     size_t F = this->faces.size;
     size_t E = this->edges.size;
@@ -319,7 +322,7 @@ static __global__ void get_vertex_edge_adjacency_kernel(
 
 void CuMesh::get_vertex_edge_adjacency() {
     if (this->edges.is_empty()) {
-        throw std::runtime_error("Edges must be computed before calling get_vertex_edge_adjacency.");
+        this->get_edges();
     }
     size_t E = this->edges.size;
     size_t V = this->vertices.size;
@@ -405,7 +408,7 @@ struct is_boundary_edge {
 
 void CuMesh::get_boundary_info() {
     if (this->edges.is_empty() || this->edge2face_cnt.is_empty()) {
-        throw std::runtime_error("Edges and edge2face_cnt must be computed before calling get_boundary_info.");
+        this->get_edges();
     }
     size_t E = this->edges.size;
 
@@ -503,8 +506,11 @@ static __global__ void get_vertex_boundary_adjacency_kernel(
 
 
 void CuMesh::get_vertex_boundary_adjacency() {
-    if (this->edges.is_empty() || this->boundaries.is_empty()) {
-        throw std::runtime_error("Edges and boundaries must be computed before calling get_vertex_boundary_adjacency.");
+    if (this->edges.is_empty()) {
+        this->get_edges();
+    } 
+    if (this->boundaries.is_empty()) {
+        this->get_boundary_info();
     }
     size_t E = this->edges.size;
     size_t V = this->vertices.size;
@@ -566,7 +572,7 @@ static __global__ void get_edge_is_manifold_kernel(
 
 void CuMesh::get_edge_is_manifold() {
     if (this->edge2face_cnt.is_empty()) {
-        throw std::runtime_error("edge2face_cnt must be computed before calling get_edge_is_manifold.");
+        this->get_edges();
     }
     this->edge_is_manifold.resize(this->edges.size);
     get_edge_is_manifold_kernel<<<(this->edges.size+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE>>>(
@@ -611,8 +617,11 @@ static __global__ void get_vertex_is_manifold_kernel(
 
 
 void CuMesh::get_vertex_is_manifold() {
-    if (this->vert2edge.is_empty() || this->vert2edge_offset.is_empty() || this->edge2face_cnt.is_empty()) {
-        throw std::runtime_error("vert2edge, vert2edge_offset and edge2face_cnt must be computed before calling get_vertex_is_manifold.");
+    if (this->vert2edge.is_empty() || this->vert2edge_offset.is_empty()) {
+        this->get_vertex_edge_adjacency();
+    }
+    if (this->edge2face_cnt.is_empty()) {
+        this->get_edges();
     }
     size_t V = this->vertices.size;
 
@@ -664,7 +673,7 @@ static __global__ void set_manifold_face_adj_kernel(
 
 void CuMesh::get_manifold_face_adjacency() {
     if (this->edge2face.is_empty() || this->edge2face_offset.is_empty()) {
-        throw std::runtime_error("edge2face and edge2face_offset must be computed before calling get_manifold_face_adjacency.");
+        this->get_edge_face_adjacency();
     }
     if (this->edge_is_manifold.is_empty()) {
         this->get_edge_is_manifold();
@@ -743,7 +752,7 @@ struct is_manifold_boundary_vertex {
 
 void CuMesh::get_manifold_boundary_adjacency() {
     if (this->vert2bound.is_empty() || this->vert2bound_offset.is_empty()) {
-        throw std::runtime_error("vert2bound and vert2bound_offset must be computed before calling get_manifold_boundary_adjacency.");
+        this->get_vertex_boundary_adjacency();
     }
     if (this->vert_is_manifold.is_empty()) {
         this->get_vertex_is_manifold();
@@ -791,6 +800,10 @@ void CuMesh::get_manifold_boundary_adjacency() {
 
 
 void CuMesh::get_connected_components() {
+    if (this->manifold_face_adj.is_empty()) {
+        this->get_manifold_face_adjacency();
+    }
+
     size_t M = this->manifold_face_adj.size;
     size_t F = this->faces.size;
 
@@ -829,6 +842,9 @@ void CuMesh::get_connected_components() {
 
 
 void CuMesh::get_boundary_connected_components() {
+    if (this->manifold_bound_adj.is_empty()) {
+        this->get_manifold_boundary_adjacency();
+    }
     size_t M = this->manifold_bound_adj.size;
     size_t B = this->boundaries.size;
 
@@ -913,6 +929,10 @@ static __global__ void is_bound_conn_comp_loop_kernel(
 
 
 void CuMesh::get_boundary_loops() {
+    if (this->bound_conn_comp_ids.is_empty()) {
+        this->get_boundary_connected_components();
+    }
+
     size_t B = this->boundaries.size;
 
     // Check if boundary components are loops
@@ -1072,6 +1092,9 @@ void CuMesh::clear_connectivity() {
     vert2edge.free();
     vert2edge_cnt.free();
     vert2edge_offset.free();
+    vert2bound.free();
+    vert2bound_cnt.free();
+    vert2bound_offset.free();
     edge2face.free();
     edge2face_cnt.free();
     edge2face_offset.free();

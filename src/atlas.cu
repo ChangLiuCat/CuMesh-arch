@@ -296,7 +296,7 @@ static void get_chart_connectivity(
         mesh.atlas_chart_ids.ptr,
         M,
         mesh.atlas_chart_adj.ptr,
-        cu_raw_lengths,
+        cu_raw_lengths
     );
     CUDA_CHECK(cudaGetLastError());
 
@@ -1059,9 +1059,9 @@ void CuMesh::compute_charts(
             compute_chart_adjacency_cost_kernel<<<(E + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
                 this->atlas_chart_adj.ptr,
                 this->atlas_chart_normal_cones.ptr,
-                this->atlas_chart_adj_length.ptr;
-                this->atlas_chart_perims.ptr;
-                this->atlas_chart_areas.ptr;
+                this->atlas_chart_adj_length.ptr,
+                this->atlas_chart_perims.ptr,
+                this->atlas_chart_areas.ptr,
                 area_penalty_weight,
                 perimeter_area_ratio_weight,
                 E,

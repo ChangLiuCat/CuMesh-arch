@@ -280,6 +280,7 @@ void CuMesh::remove_duplicate_faces() {
         int3_decomposer{}
     ));
     CUDA_CHECK(cudaFree(cu_sorted_faces));
+    CUDA_CHECK(cudaFree(cu_sorted_face_indices));
 
     // Select first in each group of duplicate faces (based on sorted faces)
     uint8_t* cu_face_mask_sorted;

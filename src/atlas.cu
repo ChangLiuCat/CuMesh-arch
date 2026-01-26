@@ -322,11 +322,11 @@ static void get_chart_connectivity(
     ));
     CUDA_CHECK(cudaFree(cu_raw_lengths));
 	
-	#if CUDART_VERSION >= 12090
-        auto reduce_op = ::cuda::std::plus<uint64_t>();
-	#else
+    #if CUDART_VERSION >= 12090
+        auto reduce_op = ::cuda::std::plus();
+    #else
         auto reduce_op = cub::Sum();
-	#endif
+    #endif
 	
 
     // 1.3 Reduce By Key (Aggregate duplicate chart pairs by summing lengths)

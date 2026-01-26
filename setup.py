@@ -46,7 +46,7 @@ if IS_WINDOWS:
     ]
 else:
     cxx_flags += [
-        "-O2", 
+        "-O3", 
         "-std=c++17"
     ]    
     nvcc_flags += [

@@ -54,7 +54,7 @@ else:
         "-O3",
         "-std=c++17",
         "-DGLOG_USE_GLOG_EXPORT"
-        "--extended-lambda "
+        "--extended-lambda"
     ]
 
 # -------------------------------------------------
@@ -123,6 +123,7 @@ ext_modules = [
                 "-U__CUDA_NO_HALF_OPERATORS__",
                 "-U__CUDA_NO_HALF_CONVERSIONS__",
                 "-U__CUDA_NO_HALF2_OPERATORS__",
+                "--extended-lambda"
             ],
         },
     ),

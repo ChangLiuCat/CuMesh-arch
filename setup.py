@@ -47,11 +47,13 @@ if IS_WINDOWS:
 else:
     cxx_flags += [
         "-O3", 
-        "-std=c++17"
+        "-std=c++17",
+        "-DGLOG_USE_GLOG_EXPORT"
     ]    
     nvcc_flags += [
         "-O3",
-        "-std=c++17"
+        "-std=c++17",
+        "-DGLOG_USE_GLOG_EXPORT"
     ]
 
 # -------------------------------------------------

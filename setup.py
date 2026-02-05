@@ -54,6 +54,7 @@ else:
         "-O3",
         "-std=c++17",
         "-DGLOG_USE_GLOG_EXPORT"
+        "--extended-lambda "
     ]
 
 # -------------------------------------------------
